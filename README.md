@@ -1,41 +1,18 @@
-![pyCamillaDSP](https://github.com/HEnquist/pycamilladsp/workflows/pyCamillaDSP/badge.svg)
-
-# pyCamillaDSP
-Companion Python library for CamillaDSP.
-Works with CamillaDSP version 1.0.0 and up.
-
-Download the library, either by `git clone` or by downloading a zip file of the code. Then unpack the files, go to the folder containing the `setup.py` file and run: 
-```sh
-pip install .
-```
-Note that on some systems the command is `pip3` instead of `pip`.
+# cCamillaDSP
+Companion c++ library for CamillaDSP.
+This is my attempt at a port of pyCamillaDSP to c++. It should work with CamillaDSP version 1.0.0 and up.
 
 ## Dependencies
-pyCamillaDSP requires python 3.6 or newer and the package websocket-client.
-
-These are the names of the packages needed:
-
-| Distribution    | python  | websocket-client         |
-|-----------------|---------|--------------------------|
-| Fedora          | python3 | python3-websocket-client |
-| Debian/Raspbian | python3 | python3-websocket        |
-| Arch            | python  | python-websocket-client  |
-| pip             | -       | websocket_client         |
-| Anaconda        | -       | websocket_client         |
-
-### Linux
-Most linux distributions have Python 3.6 or newer installed by default. Use the normal package manager to install the packages.
-
-### Windows
-Use Anaconda: https://www.anaconda.com/products/individual. Then use Anaconda Navigator to install `websocket_client`.
-
-### macOS
-On macOS use either Anaconda or Homebrew. The Anaconda procedure is the same as for Windows. 
-
-For Homebrew, install Python with `brew install python`, after which you can install the needed packages with pip, `pip3 install websocket_client`.
+cCamillaDSP requires easywsclient https://github.com/dhbaird/easywsclient and JSMN https://github.com/zserge/jsmn.
 
 ## Communicating with the CamillaDSP process
 This library provides an easy way to communicate with CamillaDSP via a websocket.
+
+## TODO
+Most of the methods around CamillaDSP configuration management have not yet been implemented.
+
+# Documentation from pyCamillaDSP
+## This has not yet been updated to reflect the port to c++
 
 Simple example to connect to CamillaDSP to read the version (assuming CamillaDSP is running on the same machine and listening on port 1234):
 ```python
