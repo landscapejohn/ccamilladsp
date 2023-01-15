@@ -1,18 +1,13 @@
 #include <iostream>
 #include "easywsclient.hpp"
+#include "cCamillaDSP.hpp"
+#include "jsmn.hpp"
+#include <cstring>
+#include <cmath>
 #ifdef _WIN32
 #pragma comment( lib, "ws2_32" )
 #include <WinSock2.h>
 #endif
-#include <assert.h>
-#include <stdio.h>
-#include <string>
-#include <stdlib.h>
-#include <string.h>
-#include "jsmn.hpp"
-#include <stdexcept>
-#include <tuple>
-#include <list>
 
 using namespace std;
 
@@ -38,7 +33,7 @@ static int jsoneq(string json, jsmntok_t *tok, const char *s) {
     return -1;
 }
 
-void handle_reply(const std::string &message)
+void _handle_reply(const std::string &message)
 {
     _await_response = false; // mark that the response has been received
  
@@ -96,72 +91,36 @@ void handle_reply(const std::string &message)
     }
 }
 
-enum STANDARD_RATES
-{
-    RATE_8000 = 8000,
-    RATE_11025 = 11025,
-    RATE_16000 = 16000,
-    RATE_22050 = 22050,
-    RATE_32000 = 32000,
-    RATE_44100 = 44100,
-    RATE_48000 = 48000,
-    RATE_88200 = 88200,
-    RATE_96000 = 96000,
-    RATE_176400 = 176400,
-    RATE_192000 = 192000,
-    RATE_352800 = 352800,
-    RATE_384000 = 384000,
-    RATE_705600 = 705600,
-    RATE_768000 = 768000
-};
-
-enum ProcessingState
-{
-    RUNNING,
-    PAUSED,
-    INACTIVE,
-    STARTING,
-    STALLED
-};
-
 ProcessingState _state_from_string(string value)
 {
     if (value == "Running")
-        return RUNNING;
+        return ProcessingState::RUNNING;
     else if (value == "Paused")
-        return PAUSED;
+        return ProcessingState::PAUSED;
     else if (value == "Inactive")
-        return INACTIVE;
+        return ProcessingState::INACTIVE;
     else if (value == "Starting")
-        return STARTING;
+        return ProcessingState::STARTING;
     else if (value == "Stalled")
-        return STALLED;
+        return ProcessingState::STALLED;
+    else
+        throw out_of_range("Invalid value for ProcessingState: " + value);
 }
-
-enum StopReason
-{
-    NONE,
-    DONE,
-    CAPTUREERROR,
-    PLAYBACKERROR,
-    CAPTUREFORMATCHANGE,
-    PLAYBACKFORMATCHANGE
-};
 
 StopReason _reason_from_reply(string value)
 {
     if (value == "None")
-        return NONE;
+        return StopReason::NONE;
     else if (value == "Done")
-        return DONE;
+        return StopReason::DONE;
     else if (value == "CaptureError")
-        return CAPTUREERROR;
+        return StopReason::CAPTUREERROR;
     else if (value == "PlaybackError")
-        return PLAYBACKERROR;
+        return StopReason::PLAYBACKERROR;
     else if (value == "CaptureFormatChange")
-        return CAPTUREFORMATCHANGE;
+        return StopReason::CAPTUREFORMATCHANGE;
     else if (value == "PlaybackFormatChange")
-        return PLAYBACKFORMATCHANGE;
+        return StopReason::PLAYBACKFORMATCHANGE;
     else
         throw out_of_range("Invalid value for StopReason: " + value);
 }
@@ -209,7 +168,7 @@ response _query(string command, string arg = "")
             _ws->send(query);
             while (_ws->getReadyState() != WebSocket::CLOSED && _await_response) {
                 _ws->poll();
-                _ws->dispatch(handle_reply);
+                _ws->dispatch(_handle_reply);
             }
         }
         catch (exception()) {
@@ -240,37 +199,6 @@ void disconnect()
     }
 
     delete _ws;
-}
-
-int main()
-{
-#ifdef _WIN32
-    INT rc;
-    WSADATA wsaData;
-
-    rc = WSAStartup(MAKEWORD(2, 2), &wsaData);
-    if (rc) {
-        printf("WSAStartup Failed.\n");
-        return 1;
-    }
-#endif
-
-    connect("192.168.1.113", 1234);
-
-    tuple<int, int, int> library_v = get_library_version();
-    tuple<int, int, int> cdsp_v = get_version();
-
-    cout << "Library version: " + to_string(get<0>(library_v)) + "." + to_string(get<1>(library_v)) + "." + to_string(get<2>(library_v)) + "\n";
-    cout << "CamillaDSP version: " + to_string(get<0>(cdsp_v)) + "." + to_string(get<1>(cdsp_v)) + "." + to_string(get<2>(cdsp_v)) + "\n";
-
-    if (is_connected())
-    {
-        disconnect();
-    }
-#ifdef _WIN32
-    WSACleanup();
-#endif
-    return 0;
 }
 
 //Read what device types the running CamillaDSP process supports. 
@@ -344,13 +272,14 @@ float get_signal_range_dB()
     float range_dB;
 
     if (sigrange > 0.0)
-        range_dB = 20.0 * log10(sigrange / 2.0);
+        range_dB = (float)20.0 * (float)log10(sigrange / 2.0);
     else
         range_dB = -1000;
 
     return range_dB;
 }
 
+//Parse the signal levels returned as JSON into a list
 list<float> _parse_signal_levels(string message)
 {
     jsmn_parser p;
@@ -445,15 +374,30 @@ STANDARD_RATES get_capture_rate()
 
     if (10584 < rate && rate < 798720)
     {
-        float minrate = 0.96 * rate;
-        float maxrate = 1.04 * rate;
+        float minrate = (float)0.96 * rate;
+        float maxrate = (float)1.04 * rate;
 
-        list<STANDARD_RATES> all_Rates = { RATE_8000, RATE_11025, RATE_16000, RATE_22050, RATE_32000, RATE_44100,
-            RATE_48000, RATE_88200, RATE_96000, RATE_176400, RATE_192000, RATE_352800, RATE_384000, RATE_705600, RATE_768000 };
+        list<STANDARD_RATES> all_Rates = {
+            STANDARD_RATES::RATE_8000,
+            STANDARD_RATES::RATE_11025,
+            STANDARD_RATES::RATE_16000,
+            STANDARD_RATES::RATE_22050,
+            STANDARD_RATES::RATE_32000,
+            STANDARD_RATES::RATE_44100,
+            STANDARD_RATES::RATE_48000,
+            STANDARD_RATES::RATE_88200,
+            STANDARD_RATES::RATE_96000,
+            STANDARD_RATES::RATE_176400,
+            STANDARD_RATES::RATE_192000,
+            STANDARD_RATES::RATE_352800,
+            STANDARD_RATES::RATE_384000,
+            STANDARD_RATES::RATE_705600,
+            STANDARD_RATES::RATE_768000
+        };
 
         for (STANDARD_RATES test_rate : all_Rates)
         {
-            int trate = static_cast<float>(test_rate);
+            int trate = static_cast<int>(test_rate);
 
             if (minrate < trate && trate < maxrate)
             {
