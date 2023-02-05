@@ -36,7 +36,7 @@ static int jsoneq(string json, jsmntok_t *tok, const char *s) {
 void _handle_reply(const std::string &message)
 {
     _await_response = false; // mark that the response has been received
- 
+
     _reply.command = "";
     _reply.result = "";
     _reply.value = "";
@@ -155,7 +155,7 @@ response _query(string command, string arg = "")
         string query;
 
         if (!arg.empty()) {
-            query = "{\"" + command + "\":" + arg +"}";
+            query = "{\"" + command + "\":" + arg + "}";
         }
         else {
             query = "\"" + command + "\"";
@@ -205,43 +205,43 @@ void disconnect()
 //Returns a tuple with two lists of device types, the first for playback and the second for capture.
 tuple<list<string>, list<string>> get_supported_device_types()
 {
-        _query("GetSupportedDeviceTypes");
+    _query("GetSupportedDeviceTypes");
 
-        string message = _reply.value.c_str();
+    string message = _reply.value.c_str();
 
-        jsmn_parser p;
-        jsmntok_t t[32]; /* We expect no more than 32 tokens */
+    jsmn_parser p;
+    jsmntok_t t[32]; /* We expect no more than 32 tokens */
 
-        jsmn_init(&p);
-        int r = jsmn_parse(&p, message.c_str(), message.length(), t, sizeof(t) / sizeof(t[0]));
-        if (r < 0) {
-            throw ios_base::failure("Failed to parse JSON: " + r);
-        }
+    jsmn_init(&p);
+    int r = jsmn_parse(&p, message.c_str(), message.length(), t, sizeof(t) / sizeof(t[0]));
+    if (r < 0) {
+        throw ios_base::failure("Failed to parse JSON: " + r);
+    }
 
-        list<string> playback_devices;
-        list<string> capture_devices;
+    list<string> playback_devices;
+    list<string> capture_devices;
 
-        bool end_of_playback = false;
+    bool end_of_playback = false;
 
-        for (int i = 2; i < r; i++)
+    for (int i = 2; i < r; i++)
+    {
+        if (t[i].type == JSMN_ARRAY)
         {
-            if (t[i].type == JSMN_ARRAY)
-            {
-                end_of_playback = true;
-                continue;
-            }
-
-            if (!end_of_playback)
-            {
-                playback_devices.push_back(message.substr(t[i].start, t[i].end - t[i].start));
-            }
-            else
-            {
-                capture_devices.push_back(message.substr(t[i].start, t[i].end - t[i].start));
-            }
+            end_of_playback = true;
+            continue;
         }
 
-        return make_tuple(playback_devices, capture_devices);
+        if (!end_of_playback)
+        {
+            playback_devices.push_back(message.substr(t[i].start, t[i].end - t[i].start));
+        }
+        else
+        {
+            capture_devices.push_back(message.substr(t[i].start, t[i].end - t[i].start));
+        }
+    }
+
+    return make_tuple(playback_devices, capture_devices);
 }
 
 //Get current processing state.
@@ -509,7 +509,7 @@ void get_previous_config()
     return config_object
 }
 
-//Read a config from yaml string and return the contents 
+//Read a config from yaml string and return the contents
 //as a Python object, with defaults filled out with their default values.
 void read_config(config_string)
 {
